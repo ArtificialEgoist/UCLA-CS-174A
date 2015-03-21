@@ -1,0 +1,109 @@
+<html>
+
+<script type="text/javascript" src="../Common/webgl-utils.js"></script>
+<script type="text/javascript" src="../Common/initShaders.js"></script>
+<script type="text/javascript" src="../Common/math.js"></script>
+<script type="text/javascript" src="homework3.js"></script>
+
+<script id="vertex-shader" type="x-shader/x-vertex">
+
+uniform bool perVertex; // if we want to use per-vertex Gouraud shading
+
+// sphere data vecters
+attribute vec3 vPosition;
+attribute vec3 vNormal;
+
+// transformation matrices
+uniform mat4 mvMatrix;
+uniform mat4 pMatrix;
+uniform mat4 mvLightMatrix;
+
+// normals and lights
+uniform vec3 lightPosition;
+uniform vec4 ambientProduct, diffuseProduct, specularProduct;
+uniform float shininess;
+varying vec3 N, L, E;
+varying vec4 fColor;
+
+// using per-vertex shading interpolates values for each vertex (REQUIREMENT 7)
+// the result is more rough, but the performance is better in general
+// we'll use per-vertex shading on smooth (but perhaps duller) objects for Gouraud shading
+
+void main() {
+	
+	// light position in camera space
+    vec3 pos = (mvMatrix * vec4(vPosition, 1.0)).xyz;
+	vec3 light = (mvLightMatrix * vec4(lightPosition, 1.0)).xyz;
+    L = normalize(light - pos); 
+    E = normalize(-pos);	
+    N = normalize(-mvMatrix * vec4(vNormal, 0.0)).xyz; 
+
+	gl_Position = pMatrix * vec4(pos, 1.0);
+	
+	// perform per-vector Gouraud shading, setting color for vertices and letting fragment shader interpolate
+	if(perVertex) {
+		vec3 H = normalize(L + E);
+		vec4 ambient = ambientProduct;
+		float kd = max(dot(L, N), 0.0); //float kd = abs(dot(L, N));
+		vec4 diffuse = kd * diffuseProduct;
+		float ks = pow(max(dot(N, H), 0.0), shininess); //float ks = pow(abs(dot(N, H)), shininess);
+		vec4 specular = ks * specularProduct;
+		fColor = ambient + diffuse + specular;
+		fColor.a  = 1.0;
+
+	}
+	
+} 
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">
+
+precision mediump float;
+
+uniform bool perFragment; // if we want to use per-fragment Phong shading
+
+// normals and lights
+uniform vec4 ambientProduct2, diffuseProduct2, specularProduct2;
+uniform float shininess2;
+varying vec3 N, L, E;
+varying vec4 fColor;
+
+// using per-fragment shading interpolates values independently for each fragment (REQUIREMENT 7)
+// this provides us with a smoother shading that is noticeable when the camera is close enough
+// unfortunately, there's a tradeoff between CPU/GPU load, and per-fragment can be less efficient in performance
+// we'll use per-fragment shading on smooth objects for Phong shading
+
+void main() {
+
+	// perform per-fragment Phong shading, setting color for each individual fragment
+	if(perFragment) {
+		vec4 fColor;
+		vec3 H = normalize(L + E);
+		vec4 ambient = ambientProduct2;
+		float kd = max(dot(L, N), 0.0); //float kd = abs(dot(L, N));
+		vec4 diffuse = kd * diffuseProduct2;
+		float ks = pow(max(dot(N, H), 0.0), shininess2); //float ks = pow(abs(dot(N, H)), shininess);
+		vec4 specular = ks * specularProduct2;
+		fColor = ambient + diffuse + specular;
+		fColor.a  = 1.0;
+		
+		gl_FragColor = fColor;
+		
+	}
+	else {
+		// we need to isolate this, since fColor goes out of scope and will assign an empty fColor
+		gl_FragColor = fColor;
+	}
+	
+}
+</script>
+
+<body>
+<canvas id="gl-canvas" width="512" height="512">
+Oops ... your browser doesn't support the HTML5 canvas element
+</canvas>
+   
+
+
+</body>
+</html>

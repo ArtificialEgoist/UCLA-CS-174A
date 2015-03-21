@@ -1,0 +1,90 @@
+<html>
+
+<script type="text/javascript" src="./Common/webgl-utils.js"></script>
+<script type="text/javascript" src="./Common/initShaders.js"></script>
+<script type="text/javascript" src="./Common/math.js"></script>
+<script type="text/javascript" src="homework4.js"></script>
+
+<script id="vertex-shader" type="x-shader/x-vertex">
+
+// sphere data vecters
+attribute vec3 vPosition;
+attribute vec3 vNormal;
+
+// texture coordinates
+attribute vec2 vTextureCoordinates;
+varying vec2 fTextureCoordinates;
+
+// transformation matrices
+uniform mat4 mvMatrix;
+uniform mat4 pMatrix;
+uniform mat4 mvLightMatrix;
+
+// normals and lights
+uniform vec3 lightPosition;
+varying vec3 N, L, E, H;
+varying vec4 fColor;
+
+void main() {
+	
+	// light position in camera space
+    vec3 pos = (mvMatrix * vec4(vPosition, 1.0)).xyz;
+	
+	vec3 light = lightPosition; //vec3 light = (mvLightMatrix * vec4(lightPosition, 1.0)).xyz;
+	
+    L = normalize(light - pos); 
+    E = normalize(-pos);	
+	H = normalize(L + E);
+    N = normalize(mvMatrix * vec4(vNormal, 0.0)).xyz;
+	
+	fTextureCoordinates = vTextureCoordinates;
+	gl_Position = pMatrix * vec4(pos, 1.0);
+
+} 
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">
+
+precision mediump float;
+
+uniform bool enableShading; // choose whether to apply lighting or simply display texture
+varying vec2 fTextureCoordinates;
+uniform sampler2D uSampler; //texture map
+
+// normals and lights
+uniform float shininess;
+varying vec3 N, L, E, H;
+
+void main() {
+
+	vec4 texColor = texture2D(uSampler, fTextureCoordinates); 
+	
+	vec4 ambient = 0.4 * texColor; //vec4 ambient = ambientProduct2;
+	
+	float kd = max(dot(L, N), 0.0);
+	vec4 diffuse = kd * 0.7 * texColor; //vec4 diffuse = kd * diffuseProduct2;
+	
+	float ks = pow(max(dot(N, H), 0.0), shininess);
+	vec4 specular = 0.3 * ks * vec4(1.0, 1.0, 1.0, 1.0); //vec4 specular = ks * specularProduct2;
+	
+	vec4 fColor = ambient + diffuse + specular;
+	fColor.a  = 1.0;
+	
+	// if shading is enabled (toggled by the "1" key)
+	if(enableShading)
+		gl_FragColor = fColor; // use this for texture mapping and light/shading
+	else
+		gl_FragColor = texColor; // use this for simple texture mapping
+
+}
+</script>
+
+<body>
+<canvas id="gl-canvas" width="512" height="512">
+Oops ... your browser doesn't support the HTML5 canvas element
+</canvas>
+   
+
+
+</body>
+</html>
